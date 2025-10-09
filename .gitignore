@@ -99,6 +99,7 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+note_bot_env/
 
 # Spyder project settings
 .spyderproject
@@ -123,3 +124,6 @@ dmypy.json
 
 # Cython debug symbols
 cython_debug/
+
+# Config files
+telegram_bot/config.py
