@@ -1,0 +1,18 @@
+# Git
+.git
+
+# Docker
+.dockerignore
+Dockerfile
+
+# Python virtual environment
+note_bot_env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Output files
+output/

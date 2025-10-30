@@ -1,2 +1,6 @@
 python-telegram-bot
 openai
+langchain
+langgraph
+langchain-openai
+langchain-teddynote
