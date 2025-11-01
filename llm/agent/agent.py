@@ -1,4 +1,3 @@
-
 import asyncio
 from langchain.tools import tool
 from langchain_openai import ChatOpenAI
@@ -11,7 +10,19 @@ from telegram_bot.actions import (
     delete_note as delete_note_async,
     edit_note as edit_note_async,
     find_by_tag as find_by_tag_async,
+    get_help as get_help_async,
+    report_issue as report_issue_async,
 )
+
+@tool
+async def get_help_tool() -> str:
+    """Returns a help message with instructions on how to use the bot."""
+    return await get_help_async()
+
+@tool
+async def report_issue_tool(report_text: str) -> dict:
+    """Reports an issue or suggestion to the developer."""
+    return await report_issue_async(report_text)
 
 @tool
 async def view_notes_tool() -> str:
@@ -49,6 +60,8 @@ tools = [
     delete_note_tool,
     edit_note_tool,
     find_by_tag_tool,
+    get_help_tool,
+    report_issue_tool,
 ]
 
 llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=0)
@@ -60,28 +73,35 @@ async def call_model(state: AgentState):
 
 async def call_tools(state: AgentState):
     tool_messages = []
-    user_notes = state["user_notes"]
+    deferred_action = None
+    user_id = state["user_id"]
 
     for tool_call in state["messages"][-1].tool_calls:
         tool_name = tool_call["name"]
         tool_input = tool_call["args"]
         
         if tool_name == "view_notes_tool":
-            message = await view_notes_async(user_notes)
+            message = await view_notes_async(user_id)
         elif tool_name == "add_note_tool":
-            user_notes, message = await add_note_async(user_notes, **tool_input)
+            message = await add_note_async(user_id, **tool_input)
         elif tool_name == "delete_note_tool":
-            user_notes, message = await delete_note_async(user_notes, **tool_input)
+            message = await delete_note_async(**tool_input)
         elif tool_name == "edit_note_tool":
-            user_notes, message = await edit_note_async(user_notes, **tool_input)
+            message = await edit_note_async(**tool_input)
         elif tool_name == "find_by_tag_tool":
-            message = await find_by_tag_async(user_notes, **tool_input)
+            message = await find_by_tag_async(user_id, **tool_input)
+        elif tool_name == "get_help_tool":
+            message = await get_help_async()
+        elif tool_name == "report_issue_tool":
+            result = await report_issue_async(**tool_input)
+            deferred_action = {"action": result["action"], "text": result["text"]}
+            message = result["user_message"]
         else:
             continue
 
         tool_messages.append(ToolMessage(tool_call_id=tool_call["id"], content=message))
 
-    return {"messages": tool_messages, "user_notes": user_notes}
+    return {"messages": tool_messages, "deferred_action": deferred_action}
 
 def should_continue(state: AgentState):
     if state["messages"][-1].tool_calls:
@@ -97,8 +117,9 @@ workflow.add_edge("tools", "agent")
 
 app = workflow.compile()
 
-async def run_agent_async(user_input: str, user_notes: list):
-    return await app.ainvoke({"messages": [HumanMessage(content=user_input)], "user_notes": user_notes})
+async def run_agent_async(user_input: str, user_id: int):
+    messages = [HumanMessage(content=user_input)]
+    return await app.ainvoke({"messages": messages, "user_id": user_id, "deferred_action": None})
 
-def run_agent(user_input: str, user_notes: list):
-    return asyncio.run(run_agent_async(user_input, user_notes))
+def run_agent(user_input: str, user_id: int):
+    return asyncio.run(run_agent_async(user_input, user_id))

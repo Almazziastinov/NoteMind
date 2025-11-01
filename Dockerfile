@@ -10,11 +10,11 @@ COPY requirements.txt .
 # Устанавливаем зависимости
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Создаем директорию для хранения данных
-RUN mkdir output
-
 # Копируем весь код проекта в рабочую директорию
 COPY . .
+
+# Сообщаем Docker, что контейнер будет слушать этот порт
+EXPOSE 8080
 
 # Указываем команду для запуска бота при старте контейнера
 CMD ["python", "telegram_bot/bot.py"]
