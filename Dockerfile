@@ -1,6 +1,9 @@
 # Используем официальный образ Python
 FROM python:3.11-slim
 
+# Устанавливаем системные зависимости (ffmpeg для обработки аудио)
+RUN apt-get update && apt-get install -y --no-install-recommends ffmpeg && rm -rf /var/lib/apt/lists/*
+
 # Устанавливаем рабочую директорию в контейнере
 WORKDIR /app
 

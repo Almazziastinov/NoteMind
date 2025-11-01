@@ -2,10 +2,11 @@
 
 import sys
 import os
+import uuid
+import logging
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-import logging
 from telegram import Update
 from telegram.ext import (
     Application,
@@ -16,6 +17,7 @@ from telegram.ext import (
 )
 
 from llm.agent.agent import run_agent_async
+from llm.transcription import transcribe_audio
 from telegram_bot import db
 
 # Read README file for /start command
@@ -34,12 +36,9 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     db.get_or_create_user(user_id)
     await update.message.reply_text(README_TEXT)
 
-async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Handles text messages by passing them to the agent."""
-    user_id = update.message.from_user.id
-    user_input = update.message.text
+async def process_input(user_input: str, user_id: int, update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Processes user input (text or transcribed audio) by running the agent."""
     user_db_id = db.get_or_create_user(user_id)
-
     await update.message.reply_text("Думаю...")
 
     result = await run_agent_async(user_input, user_db_id)
@@ -57,6 +56,44 @@ async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> Non
 
     final_response = result["messages"][-1].content
     await update.message.reply_text(final_response)
+
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handles text messages by passing them to the agent."""
+    await process_input(update.message.text, update.message.from_user.id, update, context)
+
+async def handle_voice(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handles voice messages by transcribing them and passing the text to the agent."""
+    user_id = update.message.from_user.id
+    voice = update.message.voice
+    
+    # Create a unique filename
+    file_name = f"{uuid.uuid4()}.oga"
+    file_path = os.path.join("output", file_name)
+    os.makedirs("output", exist_ok=True)
+
+    try:
+        # Download the voice message
+        voice_file = await voice.get_file()
+        await voice_file.download_to_drive(file_path)
+        
+        await update.message.reply_text("Расшифровываю голосовое...")
+
+        # Transcribe the audio
+        transcribed_text = await transcribe_audio(file_path)
+
+        if transcribed_text:
+            # Process the transcribed text
+            await process_input(transcribed_text, user_id, update, context)
+        else:
+            await update.message.reply_text("Не удалось расшифровать голосовое сообщение. Попробуйте еще раз.")
+
+    except Exception as e:
+        logger.error(f"Error handling voice message: {e}")
+        await update.message.reply_text("Произошла ошибка при обработке вашего голосового сообщения.")
+    finally:
+        # Clean up the downloaded file
+        if os.path.exists(file_path):
+            os.remove(file_path)
 
 def main() -> None:
     """Runs the bot."""
@@ -77,6 +114,7 @@ def main() -> None:
 
     application.add_handler(CommandHandler("start", start))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+    application.add_handler(MessageHandler(filters.VOICE, handle_voice))
 
     bot_mode = os.getenv("BOT_MODE", "POLLING")
     if bot_mode == "WEBHOOK":
