@@ -41,15 +41,15 @@ async def add_note(user_db_id: int, note_text: str) -> str:
     db.add_note(user_db_id, note_text, tags)
     return f"Заметка добавлена: {note_text}\nТеги: {', '.join(tags)}"
 
-async def delete_note(note_id: int) -> str:
+async def delete_note(note_id: int, user_db_id: int) -> str:
     """Deletes a note."""
-    db.delete_note(note_id)
+    db.delete_note(note_id, user_db_id)
     return f"Заметка {note_id} удалена."
 
-async def edit_note(note_id: int, new_text: str) -> str:
+async def edit_note(note_id: int, new_text: str, user_db_id: int) -> str:
     """Edits a note."""
     tags = await get_tags_from_openai(new_text)
-    db.edit_note(note_id, new_text, tags)
+    db.edit_note(note_id, new_text, tags, user_db_id)
     return f"Заметка {note_id} отредактирована.\nНовые теги: {', '.join(tags)}"
 
 async def find_by_tag(user_db_id: int, tag: str) -> str:

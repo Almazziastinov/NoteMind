@@ -64,7 +64,11 @@ tools = [
     report_issue_tool,
 ]
 
-llm = ChatOpenAI(model="gpt-4-turbo-preview", temperature=0)
+llm = ChatOpenAI(
+    model="gpt-3.5-turbo",
+    temperature=0,
+    model_kwargs={"seed": 42},
+)
 llm_with_tools = llm.bind_tools(tools)
 
 async def call_model(state: AgentState):
@@ -85,9 +89,9 @@ async def call_tools(state: AgentState):
         elif tool_name == "add_note_tool":
             message = await add_note_async(user_id, **tool_input)
         elif tool_name == "delete_note_tool":
-            message = await delete_note_async(**tool_input)
+            message = await delete_note_async(user_db_id=user_id, **tool_input)
         elif tool_name == "edit_note_tool":
-            message = await edit_note_async(**tool_input)
+            message = await edit_note_async(user_db_id=user_id, **tool_input)
         elif tool_name == "find_by_tag_tool":
             message = await find_by_tag_async(user_id, **tool_input)
         elif tool_name == "get_help_tool":

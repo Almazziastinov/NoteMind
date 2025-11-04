@@ -8,13 +8,8 @@ import logging
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from telegram import Update
-from telegram.ext import (
-    Application,
-    CommandHandler,
-    ContextTypes,
-    MessageHandler,
-    filters,
-)
+from telegram.constants import ChatAction
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 from llm.agent.agent import run_agent_async
 from llm.transcription import transcribe_audio
@@ -39,7 +34,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 async def process_input(user_input: str, user_id: int, update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Processes user input (text or transcribed audio) by running the agent."""
     user_db_id = db.get_or_create_user(user_id)
-    await update.message.reply_text("Думаю...")
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action=ChatAction.TYPING)
 
     result = await run_agent_async(user_input, user_db_id)
 

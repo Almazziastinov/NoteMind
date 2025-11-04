@@ -97,22 +97,22 @@ def add_note(user_db_id: int, note_text: str, tags: list[str]):
     cur.close()
     conn.close()
 
-def delete_note(note_id: int):
+def delete_note(note_id: int, user_db_id: int):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("DELETE FROM notes WHERE id = %s", (note_id,))
+    cur.execute("DELETE FROM notes WHERE id = %s AND user_id = %s", (note_id, user_db_id))
     conn.commit()
     cur.close()
     conn.close()
 
-def edit_note(note_id: int, new_text: str, tags: list[str]):
+def edit_note(note_id: int, new_text: str, tags: list[str], user_db_id: int):
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute("UPDATE notes SET text = %s WHERE id = %s", (new_text, note_id))
+    cur.execute("UPDATE notes SET text = %s WHERE id = %s AND user_id = %s", (new_text, note_id, user_db_id))
     
     cur.execute("DELETE FROM note_tags WHERE note_id = %s", (note_id,))
     
-    for tag_.pyname in tags:
+    for tag_name in tags:
         cur.execute("INSERT INTO tags (name) VALUES (%s) ON CONFLICT (name) DO NOTHING", (tag_name,))
         cur.execute("SELECT id FROM tags WHERE name = %s", (tag_name,))
         tag_id = cur.fetchone()[0]
